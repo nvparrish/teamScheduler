@@ -8,3 +8,10 @@ like daylight savings time or any time zones that are at half-hour intervals.
 To use this program, you need to ask all participants to fill out a Google
 spreadsheet showing which hours of each day they are available to have a
 team meeting.
+
+To start, it is useful to set up a virtual environtment
+pip3 install virtualenv
+python3 -m venv <your-env>
+source <your-env>/bin/activate
+pip3 install google-api-python-client 
+pip3 install google-auth-oauthlib
