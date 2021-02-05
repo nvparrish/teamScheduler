@@ -19,7 +19,7 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 # TODO: Enter a value for SPREADSHEET_ID here
 with open('spreadsheet.cfg') as spreadsheet_cfg:
-    SPREADSHEET_ID = spreadsheet_cfg.readline()
+    SPREADSHEET_ID = spreadsheet_cfg.readline()[:-1] # Ignore newline
     print("Spreadsheet is set to:", SPREADSHEET_ID)
 
 
