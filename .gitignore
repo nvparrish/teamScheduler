@@ -1,0 +1,7 @@
+*.pickle
+credentials.json
+*.bak
+*.sw[a-z]
+*.txt
+*.old
+__pycache__
