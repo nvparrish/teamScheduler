@@ -60,9 +60,11 @@ def parse_preferences(creds):
     service = build('sheets', 'v4', credentials=creds)
 
     # Call the Sheets API
-    sheet = service.spreadsheets()
     preference_dict = dict()
+    if SPREADSHEET_ID == '':
+        return preference_dict
 
+    sheet = service.spreadsheets()
     # Pull information
     result = sheet.values().get(spreadsheetId = SPREADSHEET_ID,
             range='A2:A').execute()
