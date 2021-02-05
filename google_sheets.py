@@ -18,7 +18,10 @@ import genetic as ga
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 # TODO: Enter a value for SPREADSHEET_ID here
-SPREADSHEET_ID = ''
+with open('spreadsheet.cfg') as spreadsheet_cfg:
+    SPREADSHEET_ID = spreadsheet_cfg.readline()
+    print("Spreadsheet is set to:", SPREADSHEET_ID)
+
 
 def credential_handling():
     # The file token.pickle stores the user's access and refresh tokens, and is
