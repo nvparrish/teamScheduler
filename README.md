@@ -15,3 +15,4 @@ python3 -m venv <your-env>
 source <your-env>/bin/activate
 pip3 install google-api-python-client 
 pip3 install google-auth-oauthlib
+pip3 install pandas
