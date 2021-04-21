@@ -172,7 +172,17 @@ class TeamsPartition:
 
 #Various print functions
 
-    def print_simple(self):
+    def print_simple(self, file_name="sys.stdout"):
+        """
+        Prints the teams in team_dict with only the members names
+        """
+        for team in self.team_dict.values():
+            for person in team[0]:
+                print("{}, ".format(person),end="",file=file_name)
+            print("",file=file_name)
+
+
+    def print_numbers(self):
         """
         Prints the teams in the team_dict with numbers instead of names
         """

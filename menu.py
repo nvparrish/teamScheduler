@@ -28,9 +28,35 @@ class MenuStructure:
                 self.manual_edit_menu()
             elif main_choice == "P":
                 self.print_menu()
+            elif main_choice == "S":
+                self.save_menu()
 
 
    #END OF MAIN MENU
+
+    def save_menu(self):
+        save_choice = "S"
+        while save_choice != "M":        
+            print("\n\n__________________________________________________________")
+            print("SAVE MENU")
+            print("Save a list of team members in a (T)ext file")
+            print("Return to (M)ain menu")
+            print("______________________________________________________________\n")
+            save_choice = input("Please enter your choice: ").upper()
+            while save_choice not in ("M", "T"):
+                print("Invalid.", save_choice)
+                save_choice = input("Please enter your choice: ").upper()
+
+            if save_choice == "T":
+                print("Saving teams to team_setup.txt")
+                print("Each team is one line.")
+
+                with open("team_setup.txt", "w") as f:
+                    self.partitions.best_partition.print_simple(f)
+                print("Print complete")
+                
+
+
 
     def print_menu(self):
         #add options, but right now, just each group with times
@@ -324,9 +350,11 @@ class MenuStructure:
         
             with open(file_name, mode='r', encoding='utf-8') as f:
                 for line in f:
-                    team_string = line[:-1]
+                    team_string = line[:-1] #gets rid of the \n character
                     team_list = team_string.split(", ")
-                    print("New team ", team_list)
+                    if team_list[-1] == "":
+                        team_list = team_list[:-1] #drops the last entry if it is blank
+                    #print("New team ", team_list)
                     partition_list.append(team_list) #add team to partition
                     if len(team_list) < min_team_size: #update the smallest team size
                         min_team_size = len(team_list)

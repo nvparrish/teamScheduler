@@ -180,7 +180,7 @@ class ClassInformation:
         print("Current Best Team")
         if print_numbers:
             print("Printing Simple")
-            self.best_partition.print_simple()
+            self.best_partition.print_numbers()
         else:
             print("Printing Names")
             self.best_partition.print_partition()
