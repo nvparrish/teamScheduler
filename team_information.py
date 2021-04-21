@@ -6,6 +6,8 @@ import google_sheets as sheets
 from math import floor
 from schedule import Schedule
 import itertools
+import pytz
+from datetime import datetime
 
 class TeamsPartition:
     """
@@ -22,7 +24,8 @@ class TeamsPartition:
 
         team_names (list): A list of names to give to each team. Currently ancient prophets
         days (list):       A list of the days of the week for printing
-        meridian (list:     A list with AM and PM for printing
+        meridian (list):     A list with AM and PM for printing
+        shift (int): How many hours to shift to MST or MDT
     """
     
     def __init__(self, availability_dict, unused_dict):
@@ -35,27 +38,38 @@ class TeamsPartition:
         Parameters:
             availability_dict (dict): A dictionary with bit_field(int) for each student. Keyed on student names
         """
-
+        
+        #setup the constants for printing pretty
         self.days = ['Mon', 'Tue', 'Wed', 'Thr', 'Fri', 'Sat', 'Sun']
         self.meridian = ["AM", "PM"]
         self.team_names = ["Adam", "Moses", "Nephi", "Lehi", 
                 "Mormon", "Moroni", "Elisha", "Enoch","John", "Peter", 
                 "James", "Luke", "Paul", "Isaiah", "Jerimiah", "Malachi",
                 "Jeremiah", "Joshua", "Nathan", "Samuel", "Alma", "Abinadi", "Helaman"]
+        #Get the current daylight savings time information and set up the shift
+        timezone = pytz.timezone("US/Mountain")
+        mountain_time_date = timezone.localize(datetime.today(), is_dst=None)
+        if mountain_time_date.tzinfo._dst.seconds == 0:  #if today is standard time
+            self.shift_time = 7 #shift GMT 7 hours for MST
+        else:
+            self.shift_time = 8 #shift GMT 8 hours for MDT
+        self.zone = { 7:"MST", 8:"MDT"}
+
+        
+        #setup the other stuff
         self.team_dict = dict()
         self.team_count = 0 #used for accessing the next team name
         
         self.schedule_dict = dict()
-        #copy all the schedules and shift to MST
+        #copy all the schedules and shift to Mountain Time
         for student_key in availability_dict.keys():
             self.schedule_dict[student_key] = Schedule(availability_dict[student_key])
-            #Shifted to MST because it makes things easier?
-            self.schedule_dict[student_key].shift(7)
-            #TODO Deal with being in MST or MDT
+            #Shifted to Mountain because it makes things easier?
+            self.schedule_dict[student_key].shift(self.shift_time)
         for student_key in unused_dict.keys():
             self.schedule_dict[student_key] = Schedule(unused_dict[student_key])
-            #Shifted to MST because it makes things easier?
-            self.schedule_dict[student_key].shift(7)
+            #Shifted to mountain because it makes things easier?
+            self.schedule_dict[student_key].shift(self.shift_time)
 
 
     def save_list(self, team_set):
@@ -78,8 +92,7 @@ class TeamsPartition:
             for person in team:
                 schedule_list.append(self.schedule_dict[person])
             meeting_schedule = Schedule.static_compare(schedule_list)
-            #meeting_schedule.shift(7) #shift the meeting schedule to Mountain Standard Time
-            #TODO Deal with being in MST or MDT
+            #meeting_schedule.shift(self.shift_time) #shift the meeting schedule to Mountain Standard Time
 
             #put a tuple into the dict (team, meeting_schedule)
             temp_dict[self.team_names[temp_count]] = (team, meeting_schedule)
@@ -113,7 +126,6 @@ class TeamsPartition:
             print("Nothing to check {} against".format(student))
             #TODO deal with what to pass back
 
-    #TODO Deal with MDT vs MST
     def check_student_team(self, student_tuple, team_name):
         """Prints the availability of a student against the given team. 
         If sub_team = True, includes the sub_teams
@@ -127,7 +139,7 @@ class TeamsPartition:
             (tuple): (team members(list), schedule_bit_field(list))
         """
         temp_schedule = Schedule(student_tuple[1])
-        temp_schedule.shift(7) #shift to MST like everyone else
+        temp_schedule.shift(self.shift_time) #shift to Mountain Time like everyone else
         #print("Old schedule for student", temp_schedule.bit_field)
         temp_schedule.compare([self.team_dict[team_name][1]])
         #print("New schedule for student", temp_schedule.bit_field)
@@ -214,7 +226,7 @@ class TeamsPartition:
        
         if count !=0:
             #start_times, end_times = self.get_hours(team_tuple[1])
-            hour_string_list = team_tuple[1].format_hours("MST")
+            hour_string_list = team_tuple[1].format_hours(self.zone[self.shift_time])
             for hour_string in hour_string_list:
                 print(hour_string)
   
@@ -260,7 +272,7 @@ class TeamsPartition:
                     print("Common hours: 0")
                 else:
                     print("Common hours: {}".format(common_count))
-                    hour_string_list = common_hours.format_hours("MST")
+                    hour_string_list = common_hours.format_hours(self.zone[self.shift_time])
                     for hour_string in hour_string_list:
                         print(hour_string)
 
