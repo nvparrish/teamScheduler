@@ -52,7 +52,7 @@ def parse_availability(creds):
         shift and generates a number where each bit represents availability
         for one hour.  The availability is shifted by the timezone.
 
-        Returns the bit-rotated availability dictionary.'''
+        Returns the bit-rotated availability dictionary and unused dictionary.'''
 
     service = build('sheets', 'v4', credentials=creds)
 

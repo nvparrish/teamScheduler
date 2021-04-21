@@ -115,7 +115,79 @@ class Schedule:
             ((n & 0xFFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF0000000000000000) >> 64)
         n = (n & 0x00000000000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) + \
             ((n & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000) >> 128)
-        return n
+        return 
+    
+    def format_hours(self, time_zone="GMT"):
+        '''
+        Format the hour blocks of the bit_field for pretty printing
+
+        Parameter:
+            Optional: time_zone(stirng): a string for the time zone. Defaults to GMT
+
+        Returns:
+            list(strings): a list of formatted strings "starttime - endtime timezone"
+        '''
+        hour_list = [] #list of tuples of common hours
+        days = ['Mon', 'Tue', 'Wed', 'Thr', 'Fri', 'Sat', 'Sun']
+        meridian = ["AM", "PM"]
+        
+        #This converts the schedule bit field into tuples for the hours of the week
+        #bit_int = schedule_thing.bit_field #Stored as Schedule, just need bits
+        #bit_int = team_tuple[1].bit_field #Stored as Schedule, just need bits
+        #comparitor = 1 # Checking Monday at 0:00
+        comparitor = 1 << 167 # Checking Monday at 0:00
+        start_time = -10 #need it to not be a real hour
+        end_time = -10 #ditto
+        for hour in range(0,168):
+            if self.bit_field & comparitor:
+                # It is a common hour
+                if hour == (end_time+1): #I am consecutive to the previous hour seen
+                    end_time = hour #new end of consecutive block
+                else: #I have a block I've started. I need to close it and start a new one
+                    if start_time >= 0: #not the first block, so add tuple to list
+                        hour_list.append((start_time, end_time))
+                    start_time = hour
+                    end_time = hour
+            comparitor = comparitor >> 1 # Check next hour
+        hour_list.append((start_time, end_time)) #puts in the last time chunk found
+
+        start_list = []
+        end_list = []
+        #This converts the tuples into pretty times
+        for time_block in hour_list:
+            start_day = time_block[0] // 24 #34 hours in a day
+            start_hour = (time_block[0] % 24) % 12 
+            if start_hour == 0:
+                start_hour = 12 #fix midnight
+            start_AMPM = (time_block[0] % 24) // 12
+            end_day = time_block[1] // 24 #24 hours in a day
+            end_hour = (time_block[1] % 24) % 12 + 1 #add 1 because I want to move one hour forward
+            if end_hour == 0:
+                end_hour = 1 #fix midnight
+            end_AMPM = (time_block[1] % 24) // 12 #0 is AM, 1 is PM
+
+            if end_hour == 12: #I am ending at noon or midnight, so need to fix the AMPM and day?
+                if end_AMPM == 0:
+                    end_AMPM = 1 #moved from 11 AM to 12 PM
+                else: 
+                    end_AMPM = 0 #moved from 11 PM to 12 AM
+                    end_day = (end_day+1) % 7 #moved to the next day. Mod to account for Sun to Mon
+            start_list.append((start_day, start_hour, start_AMPM))
+            end_list.append((end_day, end_hour, end_AMPM))
+           
+        string_list =[]
+        for block in range(0, len(start_list)):
+            string_list.append("{} {:2} {} - {} {:2} {} {}".format(
+                days[start_list[block][0]],
+                start_list[block][1],
+                meridian[start_list[block][2]],
+                days[end_list[block][0]],  
+                end_list[block][1],  
+                meridian[end_list[block][2]],
+                time_zone))
+
+        return string_list
+
 
 if __name__ == "__main__":
     my_schedule = Schedule()

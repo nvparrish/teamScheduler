@@ -11,12 +11,23 @@ import google_preference as pref
 creds = pref.credential_handling()
 preference_dict = pref.parse_preferences(creds)
 
-def printPretty (teams_set):
-    for individual_team in teams_set:
+def printPretty (partition):
+    for individual_team in partition:
         print (list(individual_team))
 
 #takes a list and returns a set of frozensets, with base or base+1  names per frozenset
 def createGroup(nameList, base=3):
+    """
+    The function will partition a list of people into sets of size or size+1
+    Default group size is 3. 
+
+    Parameters:
+        nameList(list): list of names(string)
+        base(int): base group size. Default is 3. If list not evenly divisable, groups get one size bigger.
+    
+    Returns:
+        frozenset : items in set are frozensets. Each frozenset contains names(string)
+    """
 
     #print('in createGroup\n')
     #print("base in createGroup: ", base)
@@ -32,58 +43,74 @@ def createGroup(nameList, base=3):
     if base == 4:
        #use this is need 4 parts
        part4 = nameList[(3*count):(4*count)]
-       teams_set = set(zip(part1, part2, part3, part4))
+       partition = set(zip(part1, part2, part3, part4))
     else:
-       teams_set = set(zip(part1, part2, part3))
+       partition = set(zip(part1, part2, part3))
 
     
-    #print(teams_set)
+    #print(partition)
     #add any extra names to existing teams, so we have teams of base + 1, not a team of 1 or 2
     extras = size%base
     while extras>0:
-        #temp = teams_set.pop()+(nameList[size-1],)
-        temp = teams_set.pop()
+        #temp = partition.pop()+(nameList[size-1],)
+        temp = partition.pop()
         #print(temp)
         #print("Going into loop with len(temp)", len(temp), " and base ", base)
         while (len(temp) > base):
             temp2=temp
-            temp = teams_set.pop()
-            teams_set.add(temp2)
+            temp = partition.pop()
+            partition.add(temp2)
 
         temp = temp+(nameList[size-extras],)
-        teams_set.add(temp)
+        partition.add(temp)
         extras -= 1
         #if size%3 == 2:
             #print("Size: ",size)
             #print(nameList, "\nPart1\n", part1, "\nPart2\n", part2, "\nPart3\n", part3)
-            #temp2=teams_set.pop()+(nameList[size-2],)
-            #teams_set.add(temp2)
-        #teams_set.add(temp)
+            #temp2=partition.pop()+(nameList[size-2],)
+            #partition.add(temp2)
+        #partition.add(temp)
     '''
     # This is for our class of 46 with no availability
-    temp = teams_set.pop()
+    temp = partition.pop()
     temp = temp+nameList[(4*count):]
     '''
     """
     print ("In createGroups, final return")
-    print (teams_set)
+    print (partition)
     print ("____________________________________________________________________________")
     """
-    #return teams_set   
-    return frozenset(map(frozenset, teams_set))
+    #return partition   
+    return frozenset(map(frozenset, partition))
 
-#crossover two sets and return the new one
-def crossover (set1, set2, nameList, base=3):
+def crossover (partition_set1, partition_set2, nameList, base=3):
+    """
+    This functions crosses over two partitions and returns a new partition.
+
+    Alternates taking teams from each partition. If the team contains names already in the new partiion, the team is ignored until a unique team is found. After both partitions have been emptied, any students not in the new partition are put into new teams and added to the new partition.
+
+    Parameters:
+        partition_set1(frozenset): a frozenset containing teams. 
+                    Teams are frozensets of names(string)
+        partition_set2(frozenset): a frozenset containing teams.
+                    Teams are frozensets of names(string)
+        nameList(list): a list of names(string) of the entire class
+        base(int): the smallest size of a team
+
+    Returns:
+        frozenset: a new frozenset of teams. Teams are frozensets of names(string)
+
+    """
     child = set()
     extraNames = set(nameList)
     #print("base in crossover: ", base)
     #print ("Crossover")
-    parent1 = set(set1)
-    parent2 = set(set2)
+    parent1 = set(partition_set1)
+    parent2 = set(partition_set2)
 
     if parent1 == parent2:
         print ("Crossing equal sets.")
-    while parent1 and parent2:  #while both parents have teams_set in them
+    while parent1 and parent2:  #while both parents have teams in them
         temp_Team=parent1.pop() 
         canUse = isUnique(child, temp_Team) #temp team is not already in the new child
         while (not canUse) and parent1: #pop off teams until you get one you can use
@@ -139,21 +166,38 @@ def crossover (set1, set2, nameList, base=3):
 
     return frozenset(child)
 
-#check to see if any elements of the new team are already in the set
-#return true if you can use the new team
+#TODO change name
 def isUnique (teamSet, team):
+    """
+    This function checks to see if any names in a single team are already contained in any of the teams in a set.
+
+    Parameters:
+        teamSet(frozenset): a set or frozenset of teams. Teams are frozensets of names(string)
+        team (frozenset): a set or frozenset of names(string)
+
+    Returns:
+        bool: True is no elements of team are already in teamSet
+    """
     for item in teamSet:
         if (item & team): #if there is something in the intersection
             return False #we can't use the new team
 
     return True
 
+#TODO fix the variable names
+def countCommon (partition, availability_dict):
+    """
+    This functions counts how many hours all members of each team in the partition have commonly available. 
 
-#teams_set is a set of frozensets of strings
-#returns a list of counts of common hours for the team
-def countCommon (teams_set, availability_dict):
+    Parameters:
+        partition(set): a set of teams. Teams are frozensets of names(string) #TODO Rename this partition
+        availability_dict: a dictionary of ints. Keys are student names(string). Value is an int representing the availability of the student to be used as a bit_field in a Schedule
+
+    Returns:
+        list(int): A list of the common hour count of each team in partition. Each value is an int between 0 and 24
+    """
     commonCount = []
-    for team in teams_set:
+    for team in partition:
         teamSchedules = [] #a list of all of the availability number things
         for person in team:
             teamSchedules.append(Schedule(availability_dict[person]))
@@ -163,10 +207,19 @@ def countCommon (teams_set, availability_dict):
     #print(commonCount)
     return commonCount
 
-#counts how many of the teams have a pair in the preference_dict
-def countPrefered (teams_set):
+#TODO reimplement this
+def countPrefered (partition):
+    """
+    Counts how many of the teams have a pair int he preference_dict
+
+    Parameter:
+        partition: a set of teams. Team is a frozenset of names(string)
+
+    Returns:
+        int: how many teams in partition have a preferred pair
+    """
     counter = 0
-    for individual_team in teams_set: #team is a frozenset containing the names on the team
+    for individual_team in partition: #team is a frozenset containing the names on the team
         combos = combinations(individual_team,2)
         for item in combos:
             if preference_dict.get(item):
@@ -174,9 +227,22 @@ def countPrefered (teams_set):
     return counter
 
 
+#TODO put the preferences back in. Look into multi factor evaluations
+def fitnessEvaluation (partition, availability_dict):
+    """
+    Evaluations the fitness of a partition. Currently uses 
 
-def fitnessEvaluation (teams_set, availability_dict):
-    commonCount = countCommon(teams_set, availability_dict) #count the hours common to a team
+    commonhours + (pvariance(commonhours)/100
+
+    Parameters:
+        partition(set): a set of teams. Teams are frozensets of names(string)
+        availability_dict(dict): a dictionary of the availabilty of each student. Keys are student names(string) Values are (int) that can be used as a bit_field in a Schedule.
+
+    Return:
+        float: a number expressing the fitness
+    """
+
+    commonCount = countCommon(partition, availability_dict) #get the commoncount of each team in the partition
     commonCount.sort() #not sure why I am sorting it.
 
     '''mean = st.mean(commonCount)
@@ -188,7 +254,7 @@ def fitnessEvaluation (teams_set, availability_dict):
     '''
     """
     #if have a preferenceCount
-    preferenceCount = countPrefered(teams_set)
+    preferenceCount = countPrefered(partition)
     weight = 0.005 #how much I want to take off for each team that has a preferred match
     """
 
@@ -199,22 +265,52 @@ def fitnessEvaluation (teams_set, availability_dict):
 
 
 def fitFind(item):
-    return item[1] #returnthe fitness of the item
+    """
+    Returns the second item of a tuple. Used to sort a list of tuples containing teams and fitnesses
 
+    Parameters: 
+        item(list): a list of tuples. Each tuple is (team, fitness)
+
+    Return:
+        int: the fitness of the team tuple[1]
+    """
+    return item[1] #returnthe fitness of the item
+  
 def printList (fitnessList):
+    """
+    Prints a list of teams and fitnesses with fitness first and then the team
+
+    Paramenters:
+        fitnessList(list): a list of tuples. Each tuple is (partition, fitness). partition is a frozenset of teams
+    """
     for item in fitnessList:
         print (item[1]) #print the fitnes
         printPretty(item[0])
 
 #population is a list of sets
 def evolvePopulation (population, availability_dict, generationCount, base=3):
+    """
+    The evolution portion of a genetic algorithm
+
+    Paramenters:
+        population(list): a list of partitions. Each partition is a frozenset of teams. Each team is frozenset of names(string). So [{{string, string, ...}{string, string, ...}...},{{string, string, ...}{string, string, ...}...},...]
+
+        availability_dict(dict): a dictionary of availability of students. Keys are student anems(string). Values are (int) to be used as bit_field in a Schedule
+
+        generationCount(int): how many generations we want to repeat
+        base(int): minimum size of a team. Default value is 3
+
+    Returns:
+        list: the new population
+
+    """
     #print("base in evolvePopulation: ", base)
     nameList = list(availability_dict.keys())
     fitnessList=[]# fitnesslist will be a list of tuples (frozenset team, float fitness)
 
-    for item in population:
-        fit = fitnessEvaluation(item, availability_dict)
-        fitnessList.append((item, fit))
+    for partition in population:
+        fit = fitnessEvaluation(partition, availability_dict)
+        fitnessList.append((partition, fit))
     fitnessList.sort(key=fitFind)
 
     #print ("First Generation:")
@@ -240,8 +336,25 @@ def evolvePopulation (population, availability_dict, generationCount, base=3):
 #nameList is the list of all the students names
 #availability_dict is the availability of each student
 #base is the size of a team
-
+#TODO fix the variable names for readability and naming convention
 def nextGen (fitnessList, nameList, availability_dict, base=3):
+    """
+    Does one generation of an evolution.
+
+    Takes a list of partitions.
+    Keeps the best half of the partitions
+    Creates 3 new partitions
+    Crosses over the best partitions to fill out a population
+
+    Parameters:
+        fitnessList(list): a list of tuples. Each tuple contains (partition, fitness) partition is a frozenset of teams. team is a frozenset of names(string). fitness is a float 
+        nameList(list): a list of names(string)
+        availability_dict(dict): a dictionary of availability of students. Keys are student anems(string). Values are (int) to be used as bit_field in a Schedule
+        base(int): minimum size of a team. Default value is 3
+
+    Returns:
+        list: a population of partitions
+    """
     #print("\nEvolving\n")
     #print("base in nextGen: ", base)
     cutoff = math.floor(len(fitnessList)/2) 

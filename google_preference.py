@@ -6,13 +6,6 @@ import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-#import pandas as pd
-#import numpy as np
-#from schedule import Schedule
-#import statistics as st
-#from random import shuffle
-#import genetic as ga
-#
 
 VERBOSE = False
 

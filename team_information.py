@@ -5,6 +5,7 @@ import genetic as ga
 import google_sheets as sheets
 from math import floor
 from schedule import Schedule
+import itertools
 
 class TeamsPartition:
     """
@@ -21,10 +22,10 @@ class TeamsPartition:
 
         team_names (list): A list of names to give to each team. Currently ancient prophets
         days (list):       A list of the days of the week for printing
-        meidian (list:     A list with AM and PM for printing
+        meridian (list:     A list with AM and PM for printing
     """
     
-    def __init__(self, availability_dict):
+    def __init__(self, availability_dict, unused_dict):
         """
         The Constructor for TeamsParition class.
 
@@ -45,19 +46,23 @@ class TeamsPartition:
         self.team_count = 0 #used for accessing the next team name
         
         self.schedule_dict = dict()
-        #copy the availability dictionary and store as Scheudules instead of bit strings, because I have a lot to handle and it means I don't have to cast each time I use it.
+        #copy all the schedules and shift to MST
         for student_key in availability_dict.keys():
             self.schedule_dict[student_key] = Schedule(availability_dict[student_key])
             #Shifted to MST because it makes things easier?
             self.schedule_dict[student_key].shift(7)
             #TODO Deal with being in MST or MDT
+        for student_key in unused_dict.keys():
+            self.schedule_dict[student_key] = Schedule(unused_dict[student_key])
+            #Shifted to MST because it makes things easier?
+            self.schedule_dict[student_key].shift(7)
 
 
     def save_list(self, team_set):
         """
         A function to save a class partition to team_dict.
 
-        Copies each team(frozen_set) and gets a Schedule with the common avialable time.
+        Copies each team(frozen_set) and gets a Schedule with the common available time.
         Saves each team and schedule as a tuple into a dict keyed on team_name
         
         Parameters:
@@ -85,6 +90,15 @@ class TeamsPartition:
         self.team_count = temp_count
 
     def check_student(self, student_tuple, all_teams=False, team=""):
+        """Checks a student against one or more teams and returns a dictionary of the new common hours
+        Paramenters:
+            student_tuple (tuple): contains (student name(strint), bit filed(int))
+            all_teams (Boolean): set to True if you wish to check against all teams
+            team (stirng): name of a specific team
+        Returns:
+            (tuple): (team_members, schedule_bit_field) if specific team
+            (dict): a dict of schedule_bitfields if all teams
+        """
         if all_teams:
             temp_dict = dict()
             for name in self.team_dict.keys():
@@ -99,6 +113,7 @@ class TeamsPartition:
             print("Nothing to check {} against".format(student))
             #TODO deal with what to pass back
 
+    #TODO Deal with MDT vs MST
     def check_student_team(self, student_tuple, team_name):
         """Prints the availability of a student against the given team. 
         If sub_team = True, includes the sub_teams
@@ -130,8 +145,9 @@ class TeamsPartition:
 
         return temp_team, temp_schedule
 
-        #TODO Subteams
+        #TODO Subteams? Done in the print for now
         
+    #TODO change this to update_team 
     def change_team(self, team_name, team_tuple):
         '''Updates team with team_name to the information held in team_tuple
 
@@ -141,6 +157,8 @@ class TeamsPartition:
         '''
         self.team_dict[team_name]=team_tuple
 
+
+#Various print functions
 
     def print_simple(self):
         """
@@ -172,6 +190,7 @@ class TeamsPartition:
     def print_team(self, team):
         """
         Prints an individual team with a nicely formated schedule of the common hours
+        DOES NOT PRINT TEAM NAME
 
         Parameters:
             team: 
@@ -187,58 +206,64 @@ class TeamsPartition:
         else:
             print("Bad team sent to print. Recieved: ", type(team))
             return
-
+        
         for person in team_tuple[0]:
             print("    {:30}".format(person))
         count = team_tuple[1].count_bits() 
         print("Common Meeting Times: {:d} hours".format(count))
+       
+        if count !=0:
+            #start_times, end_times = self.get_hours(team_tuple[1])
+            hour_string_list = team_tuple[1].format_hours("MST")
+            for hour_string in hour_string_list:
+                print(hour_string)
+  
 
-        hour_list = [] #list of tuples of common hours
+
+    def print_subteams(self, team):
+        """
+        Prints an individual team with a nicely formated schedule of the common hours 
+        of the whole teams and all the subteams
+
+        Parameters:
+            team: 
+                (string): team name to get from team_dict
+                (tuple): (set of members, bit_field of common)
+        """
+        if type(team) is str:
+            team_tuple = self.team_dict[team]
+        elif type(team) is tuple:
+            team_tuple = team
+        else:
+            print("Bad team sent to print. Received: ", type(team))
+            return
         
-        #This converts the schedule bit field into tuples for the hours of the week
-        if count != 0:
-            bit_int = team_tuple[1].bit_field #Stored as Schedule, just need bits
-            #comparitor = 1 # Checking Monday at 0:00
-            comparitor = 1 << 167 # Checking Monday at 0:00
-            start_time = -10 #need it to not be a real hour
-            end_time = -10 #ditto
-            for hour in range(0,168):
-                if bit_int & comparitor:
-                    # It is a common hour
-                    if hour == (end_time+1): #I am consecutive to the previous hour seen
-                        end_time = hour #new end of consecutive block
-                    else: #I have a block I've started. I need to close it and start a new one
-                        if start_time >= 0: #not the first block, so add tuple to list
-                            hour_list.append((start_time, end_time))
-                        start_time = hour
-                        end_time = hour
-                comparitor = comparitor >> 1 # Check next hour
-            hour_list.append((start_time, end_time)) #puts in the last time chunk found
+        #Whole team print
+        self.print_team(team_tuple)
 
-        #This converts the tuples into pretty times
-        for time_block in hour_list:
-            start_day = time_block[0] // 24 #34 hours in a day
-            start_hour = (time_block[0] % 24) % 12 
-            if start_hour == 0:
-                start_hour = 12 #fix midnight
-            start_AMPM = (time_block[0] % 24) // 12
-            end_day = time_block[1] // 24 #24 hours in a day
-            end_hour = (time_block[1] % 24) % 12 + 1 #add 1 because I want to move one hour forward
-            if end_hour == 0:
-                end_hour = 1 #fix midnight
-            end_AMPM = (time_block[1] % 24) // 12 #0 is AM, 1 is PM
+        #find sub groups
+        sub_team_list = list(itertools.combinations(team_tuple[0], len(team_tuple[0])-1))
+        for sub_team in sub_team_list:
+            #get the common count for the sub_team
+            sub_schedule_list=[]
+            print ("\nSub team: ")
+            for person in sub_team:
+                print("   ",person)
+                sub_schedule_list.append(self.schedule_dict[person])
+            if 0 in sub_schedule_list: #if a team member has no availability 
+                print("Common hours: 0")
+            else:
+                #print the common hours for the subteam
+                common_hours = Schedule.static_compare(sub_schedule_list)
+                common_count = common_hours.count_bits()
+                if(common_count == 0):
+                    print("Common hours: 0")
+                else:
+                    print("Common hours: {}".format(common_count))
+                    hour_string_list = common_hours.format_hours("MST")
+                    for hour_string in hour_string_list:
+                        print(hour_string)
 
-            if end_hour == 12: #I am ending at noon or midnight, so need to fix the AMPM and day?
-                if end_AMPM == 0:
-                    end_AMPM = 1 #moved from 11 AM to 12 PM
-                else: 
-                    end_AMPM = 0 #moved from 11 PM to 12 AM
-                    end_day = (end_day+1) % 7 #moved to the next day. Mod to account for Sun to Mon
-            
-            
-            print("{} {:2} {} - {} {:2} {}".format(
-                self.days[start_day],start_hour,self.meridian[start_AMPM],
-                self.days[end_day],  end_hour,  self.meridian[end_AMPM]))
 
 
 
